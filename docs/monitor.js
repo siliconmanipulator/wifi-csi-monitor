@@ -6,9 +6,11 @@ const historySize = 120;
 const baselineSize = 32;
 let history, baseline, lastFrame, samples, format, lastPacket, packetCount, resetAt;
 let mode = "demo";
+let recentMotion = [];
 let reader, port, stopping = false;
 
 function reset() {
+  recentMotion = [];
   history = [];
   baseline = [];
   lastFrame = null;
@@ -118,9 +120,15 @@ setInterval(() => {
   $("score").textContent = sample ? (sample.score * 100).toFixed(2) + "%" : "—";
   $("rate").textContent = packetCount * (1000 / interval) + " / s";
   packetCount = 0;
-  $("activity").textContent = !lastPacket || now - lastPacket > 2000 ? "No CSI" :
+  if (threshold !== null && sample) {
+    recentMotion.push(sample.score > threshold);
+    if (recentMotion.length > 3) recentMotion.shift();
+  } else {
+    recentMotion = [];
+  }
+  $("activity").textContent = !sample ? "Waiting for CSI" :
     threshold === null ? `Calibrating ${baseline.length}/${baselineSize}` :
-    sample && sample.score > threshold ? "Motion detected" : "Quiet";
+    recentMotion.filter(Boolean).length >= 2 ? "Motion detected" : "Quiet";
   if (mode === "live") $("status").textContent = now - lastPacket < 2000 && lastPacket ?
     "Live · ESP32 CSI" : "Serial open · waiting for matching CSI";
   samples = [];
@@ -144,6 +152,10 @@ $("connect").onclick = async () => {
     $("status").textContent = "USB serial requires desktop Chrome or Edge on HTTPS or localhost.";
     return;
   }
+  mode = "idle";
+  reset();
+  $("demo").disabled = true;
+  $("status").textContent = "Select your ESP32 USB serial port";
   $("connect").disabled = true;
   try {
     const selected = await navigator.serial.requestPort();
@@ -171,7 +183,9 @@ $("connect").onclick = async () => {
     }
     $("status").textContent = "Serial disconnected";
   } catch (error) {
-    $("status").textContent = "Serial · " + error.message;
+    $("status").textContent = !port && error.name === "NotFoundError" ?
+      "No port selected · choose your ESP32 USB serial port or run demo" :
+      "Serial · " + error.message;
   } finally {
     const wasLive = mode === "live";
     if (reader) reader.releaseLock();
@@ -188,5 +202,3 @@ $("connect").onclick = async () => {
     $("demo").disabled = false;
   }
 };
-
-
