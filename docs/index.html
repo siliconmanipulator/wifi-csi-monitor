@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wi-Fi CSI Monitor</title>
+<link rel="stylesheet" href="style.css">
+<script src="monitor.js" defer></script>
+</head>
+<body><main>
+<header><div><p class="eyebrow">WIRELESS SENSING</p><h1>Wi-Fi CSI Monitor</h1></div><button id="connect">Connect ESP32</button></header>
+<div class="toolbar"><span id="status" role="status">Demo · simulated CSI</span><button id="calibrate">Calibrate baseline</button><button id="demo">Run demo</button></div>
+<section class="metrics" aria-label="Signal summary">
+<article><h2>Motion</h2><strong id="activity">Calibrating</strong></article>
+<article><h2>Activity score</h2><strong id="score">—</strong></article>
+<article><h2>Packet rate</h2><strong id="rate">—</strong></article>
+</section>
+<section class="plots">
+<article><h2>Motion timeline</h2><p>CSI amplitude variation · recent intervals</p><canvas id="timeline" width="640" height="260" aria-label="Motion score over time"></canvas></article>
+<article><h2>CSI heatmap</h2><p>Subcarrier index ↑ · time →</p><canvas id="heatmap" width="640" height="260" aria-label="Signal change by subcarrier and time"></canvas><div class="legend"><span>Low change</span><i></i><span>High change</span></div></article>
+</section>
+<footer>Motion estimates describe one radio link. Heatmap colors represent changes in signal amplitude.</footer>
+</main></body></html>
