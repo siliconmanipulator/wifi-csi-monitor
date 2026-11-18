@@ -4,7 +4,8 @@ const $ = id => document.getElementById(id);
 const interval = 250;
 const historySize = 120;
 const baselineSize = 32;
-let history, baseline, lastFrame, samples, format, lastPacket, packetCount, resetAt;
+const streamTimeout = 2000;
+let history, baseline, lastFrame, samples, format, lastPacket, lastValidPacket, packetCount, resetAt;
 let mode = "demo";
 let recentMotion = [];
 let reader, port, stopping = false;
@@ -17,6 +18,7 @@ function reset() {
   samples = [];
   format = null;
   lastPacket = 0;
+  lastValidPacket = 0;
   packetCount = 0;
   resetAt = performance.now();
 }
@@ -37,20 +39,29 @@ function parse(line) {
   for (let i = firstInvalid === "1" ? 4 : 0; i < len; i += 2) {
     values.push(Math.hypot(iq[i], iq[i + 1]));
   }
-  return {values, key: [fields[1], fields[4], fields[5], fields[7], fields[16], fields[19], len, firstInvalid].join("/")};
+  return {values, key: [fields[1], fields[5], fields[7], fields[16], fields[19], len, firstInvalid].join("/")};
 }
 
 function consume({values, key}) {
+  const now = performance.now();
+  lastValidPacket = now;
+  if (format && now - lastPacket >= streamTimeout) {
+    format = null;
+    lastFrame = null;
+    baseline = [];
+    recentMotion = [];
+    samples = [];
+  }
   if (format && key !== format) return;
-  if (!format) format = key;
+  format = key;
   packetCount++;
-  if (lastFrame && performance.now() - lastPacket < 2000 && samples.length < 512) {
+  if (lastFrame && samples.length < 512) {
     const delta = values.map((value, i) => Math.min(1,
       Math.abs(value - lastFrame[i]) / Math.max(8, value + lastFrame[i])));
     samples.push(delta);
   }
   lastFrame = values;
-  lastPacket = performance.now();
+  lastPacket = now;
 }
 
 function draw(threshold) {
@@ -129,8 +140,12 @@ setInterval(() => {
   $("activity").textContent = !sample ? "Waiting for CSI" :
     threshold === null ? `Calibrating ${baseline.length}/${baselineSize}` :
     recentMotion.filter(Boolean).length >= 2 ? "Motion detected" : "Quiet";
-  if (mode === "live") $("status").textContent = now - lastPacket < 2000 && lastPacket ?
-    "Live · ESP32 CSI" : "Serial open · waiting for matching CSI";
+  if (mode === "live") {
+    const receiving = lastValidPacket && now - lastValidPacket < streamTimeout;
+    const accepted = lastPacket && now - lastPacket < streamTimeout;
+    $("status").textContent = accepted ? "Live · ESP32 CSI" :
+      receiving ? "Serial open · selecting CSI stream" : "Serial open · no recent CSI frames";
+  }
   samples = [];
   draw(threshold);
 }, interval);

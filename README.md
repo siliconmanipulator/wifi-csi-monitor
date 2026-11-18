@@ -17,7 +17,7 @@ The USB ESP8266EX previously detected on COM10 has an erased flash. Espressif's 
 
 ## Data and calibration
 
-The parser accepts the Espressif receiver's legacy CSI_DATA CSV format with a signed I/Q array after the length and first-word flag. It drops the first four bytes when flagged, computes magnitudes, and only compares packets matching the initial sender and packet layout. Recalibrate to select a new stream. Other CSI tools need format adapters.
+The parser accepts the Espressif receiver's legacy CSI_DATA CSV format with a signed I/Q array after the length and first-word flag. It drops the first four bytes when flagged, computes magnitudes, and only compares packets matching the initial sender and packet layout. Wi-Fi rate changes within the same packet layout keep the current stream. If its frames stop for two seconds, the monitor selects an available format and recalibrates automatically. Other CSI tools need format adapters.
 
 Each 250 ms interval aggregates consecutive-packet normalized amplitude changes. The first 32 intervals with data establish a baseline. Motion requires two of the latest three intervals to exceed baseline mean plus the greater of four standard deviations or 0.015. A missing interval clears the motion confirmation window. The repeated threshold crossings follow the general approach documented in the [Espressif radar example](https://github.com/espressif/esp-csi/tree/master/examples/esp-radar/connect_rainmaker). This is a heuristic activity score. Interference and changes in channel conditions can trigger it. The timeline keeps 30 seconds. The heatmap rows are I/Q bin positions in the receiver's CSI buffer, which may contain multiple training fields or null bins. No packet gap gets a heatmap sample.
 
